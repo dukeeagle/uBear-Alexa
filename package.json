@@ -1,0 +1,24 @@
+{
+  "name": "ubear-echo-real",
+  "version": "1.0.0",
+  "description": "Amazon Alexa app to interact with Twitter.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dukeeagle/uBear-echo-real.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dukeeagle/uBear-echo-real/issues"
+  },
+  "homepage": "https://github.com/dukeeagle/uBear-echo-real#readme",
+  "dependencies": {
+    "alexa-app": "^2.4.0",
+    "alexa-sdk": "^1.0.6",
+    "request": "^2.79.0"
+  }
+}

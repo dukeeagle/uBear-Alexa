@@ -1,139 +1,81 @@
 "use strict";
 
-/*
- * Alexa app to get basic information about twitter accounts.
- * (C) 2016 William Teder
- * License: WTFPL
- */
+
 
 // Depedencies: get them through npm install (name)
-const alexa = require("alexa-app"),
- 	  Twit = require("twit"),
- 	  moment = require("moment");
-
+const alexa = require("alexa-app");
+const request = require("request");
 // Allow this module to be reloaded automatically when code is changed
 module.change_code = 1;
 
 // Define an alexa-app
-const app = new alexa.app("bluebird");
+const app = new alexa.app("uBear");
 
-// Configure our twitter client. Get codes at https://apps.twitter.com/
-const T = new Twit({
-	consumer_key: "{API key}",
-	consumer_secret: "{API Secret}",
-	access_token: "{Account Token}",
-	access_token_secret: "{Account Secret}"
-});
 
-// Prettify Twitter's follower numbers
-function nFormatter(num, digits) {
-	let si = [
-		{ value: 1E6,  symbol: " million" },
-		{ value: 1E3,  symbol: " thousand" }
-	], rx = /\.0+$|(\.[0-9]*[1-9])0+$/, i;
-
-	for(i = 0; i < si.length; i++) {
-		if(num >= si[i].value) {
-		  return (num / si[i].value).toFixed(digits).replace(rx, "$1") + si[i].symbol;
-		}
-	}
-
-	return num.toFixed(digits).replace(rx, "$1");
-}
-
-// Remove links from tweets
-function stripLink(input) {
-    return input.replace(/(https?:\/\/[^\s]+)/g, "");
-}
-
-// Sometimes Alexa gives us the question here, or includes non-alphanumeric characters.
-// Those, and all whitespace, gets taken out.
-function sanatizeAccountName(input) {
-	for(let item of [
-		"followers",
-		"does",
-		"have",
-		"has",
-		"from"
-	])
-		input = input.replace(item, "");
-
-	return input.trim().replace(/\W/g, "");
-}
-
-// Called when user says "open bluebird"
+// Called when user says "open uBear"
 app.launch(function(req, res) {
-	res.say("Hello! You can ask me about an account on twitter. For help, just say help.");
-	res.shouldEndSession(false, "Anything else?");
+	res.say("Hello. This is OO Bear. I can hail an ambulance if you're a bear in need.");
+	res.shouldEndSession(false, "Are you sure you want to leave?");
 });
 
 // "ask bluebird for the last tweet from william t d r"
-app.intent("GetLastTweet", {
-		"slots": {"AccountName": "LITERAL"},
+app.intent("GetHelp", {
+		"slots": {"Location": "LITERAL"},
 		"utterances": [
-			"for the last tweet from {account name|AccountName}",
-			"what is the last tweet from {account name|AccountName}",
-			"read me the last tweet from {account name|AccountName}",
-			"tell me the last tweet from {account name|AccountName}"
+     "im hurt",
+     "help me",
+     "it hurts",
+     "im in pain",
+     "im bleeding",
+     "im experiencing trouble",
+     "im not doing so good",
+     "ive fallen and i cant get up",
+     "im hurt and im at the {location variable|Location}",
+     "im not doing so good at the {location variable|Location}",
+     "im experiencing trouble at the {location variable|Location}",
+     "im bleeding im at the {location variable|Location}",
+     "im in pain im at the {location variable|Location}",
+     "it hurts im at the {location variable|Location}",
+     "help me im at the {location variable|Location}"
 		]
 	}, (req, res) => {
-		let accountName = sanatizeAccountName(req.slot("AccountName"));
+      let intent = req.data.request.intent;
 
-		console.log(">> Request for last tweet from " + accountName + ".");
+      if(intent.slots.Location.value){
+        request('http://tdr.moe:9200/go/' + intent.slots.Location.value, function (error, response, data) {
+          try {
+            data = JSON.parse(data);
 
-		// Call the twitter API to get the last tweet
-		T.get("statuses/user_timeline", {
-			screen_name: accountName,
-			count: 1,
-			exclude_replies: true,
-			include_rts: false
-		}, (err, data, response) => {
-			try {
-				let text = stripLink(data[0].text);
+            if(data.success) {
+              console.log(1);
+              res.say("The ambulance is on its way.").send();
+            } else {
+              console.log(2);
+              res.say(data.reason).send();
+            }
+          } catch(e) {
+            console.log(data);
+            console.log(e.stack);
+          }
+        });
+      } else {
+        res.say("I'm happy to help. Where are you?").send();
+      }
 
-				res.say(data[0].user.name + " tweeted " + moment(new Date(data[0].created_at)).fromNow() + ": " + text).send();
-			} catch(e) {
-				console.log(req.data.request);
-				res.say("There was an error when getting the contents of the tweet.").send();
-			}
-		});
-
-		return false;
-	}
+      	return false;
+		}
 );
 
-// "ask bluebird how many followers does POTUS have"
-app.intent("GetFollowers", {
-		"slots": {"AccountName": "LITERAL"},
-		"utterances": [
-			"how many followers does {account name|AccountName} have",
-			"how many followers {account name|AccountName} has",
-			"how many followers does {account name|AccountName} have on twitter"
-		]
-	}, (req, res) => {
-		let accountName = sanatizeAccountName(req.slot("AccountName"));
-
-		console.log(">> Request for follower count from " + accountName + ".");
-
-		// Get basic information about an account from the twitter API.
-		T.post("users/lookup", {
-			screen_name: accountName
-		}, (err, data, response) => {
-			try {
-				res.say(data[0].name + " has " + nFormatter(data[0].followers_count, 0) + " followers.").send();
-			} catch(e) {
-				res.say("There was an error when getting the user's follower count.").send();
-			}
-		});
-
-		return false;
-	}
-);
 
 // Last-resort error method (unknown intent, etc)
 app.post = function(request, response, type, exception) {
-	if(exception)
-		response.say("Sorry, something bad happened.").send();
+	if(exception) {
+    response.say("Sorry, there was a problem connecting you to your ambulance.").send();
+
+    console.log(exception);
+  }
+
+  return false;
 };
 
 module.exports = app;
